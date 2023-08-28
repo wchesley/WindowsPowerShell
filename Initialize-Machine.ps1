@@ -121,28 +121,6 @@ Begin
 	}
 
 
-	function DisableZipFolders
-	{
-		[System.ComponentModel.Description(
-			'Disable default Zip folder integration in Windows Explorer, increasing performance')]
-		[CmdletBinding(HelpURI='cmd')] param()
-
-		Write-Verbose 'disabling default Windows Zip folder Explorer integration'
-
-		# take ownership of all Compressed Folders keys (e.g. replacing with 7-Zip)
-		Set-RegistryOwner 'HKCR' 'CLSID\{E88DCCE0-B7B3-11d1-A9F0-00AA0060FA31}';
-		Set-RegistryOwner 'HKCR' 'CLSID\{0CD7A5C0-9F37-11CE-AE65-08002B2E1262}';
-		Set-RegistryOwner 'HKLM' 'SOFTWARE\WOW6432Node\Classes\CLSID\{E88DCCE0-B7B3-11d1-A9F0-00AA0060FA31}';
-		Set-RegistryOwner 'HKLM' 'SOFTWARE\WOW6432Node\Classes\CLSID\{0CD7A5C0-9F37-11CE-AE65-08002B2E1262}';
-
-		# remove all Compressed Folders keys; back-ticks required to escape curly braces
-		Remove-Item -Path Registry::HKEY_CLASSES_ROOT\CLSID\`{E88DCCE0-B7B3-11d1-A9F0-00AA0060FA31`} -Force -Recurse -ErrorAction SilentlyContinue;
-		Remove-Item -Path Registry::HKEY_CLASSES_ROOT\CLSID\`{0CD7A5C0-9F37-11CE-AE65-08002B2E1262`} -Force -Recurse -ErrorAction SilentlyContinue;
-		Remove-Item -Path Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Classes\CLSID\`{E88DCCE0-B7B3-11d1-A9F0-00AA0060FA31`} -Force -Recurse -ErrorAction SilentlyContinue;
-		Remove-Item -Path Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Classes\CLSID\`{0CD7A5C0-9F37-11CE-AE65-08002B2E1262`} -Force -Recurse -ErrorAction SilentlyContinue;
-	}
-
-
 	function EnableHyperVEnhancedMode
 	{
 		[System.ComponentModel.Description(
@@ -234,26 +212,6 @@ Begin
 	}
 
 
-	function FixAirpodConnectivity
-	{
-		[System.ComponentModel.Description('Fixes airpod connectivity and pairing issues')]
-		[CmdletBinding(HelpURI='cmd')] param()
-
-		# If airpods will pair but then continually lose connection after manually connecting...
-		# this disables power management on the Intel(R) Wireless Bluetooth(R) device
-		$0 = 'HKLM:\SYSTEM\ControlSet001\Control\Class\{e0cbf06c-cd8b-4647-bb8a-263b43f0f974}\0000'
-		if (Test-Path $0)
-		{
-			Set-ItemProperty $0 -Name 'PnPCapabilities' -Type String -Value '24'
-		}
-
-		# enabled Device Manager >> HID >> Power Management tab 
-		# used to disable power management of Bluetooth Low Energy devices, like Airpods
-		$0 = 'HKLM:\SYSTEM\CurrentControlSet\Control\Power'
-		Set-ItemProperty $0 -Name 'CsEnabled' -Type DWord -Value 0
-	}
-
-
 	function GetPowerShellProfile
 	{
 		[System.ComponentModel.Description('Install the WindowsPowerShell profile')]
@@ -262,25 +220,7 @@ Begin
 		Write-Verbose 'fetching WindowsPowerShell environment'
 
 		Push-Location ([Environment]::GetFolderPath('MyDocuments'))
-		git clone https://github.com/stevencohn/WindowsPowerShell.git
-		Pop-Location
-	}
-
-
-	function GetYellowCursors
-	{
-		[System.ComponentModel.Description(
-			'Install yellow mouse cursors making it easier to find the cursor on the screen')]
-		[CmdletBinding(HelpURI='cmd')] param()
-
-		Write-Verbose 'enabling yellow mouse cursors'
-
-		Push-Location ([Environment]::GetFolderPath('MyDocuments'))
-		git clone https://github.com/stevencohn/YellowCursors.git
-		Push-Location YellowCursors
-		.\Install.ps1
-		Pop-Location
-		Remove-Item YellowCursors -Recurse -Force
+		git clone https://github.com/wchesley/WindowsPowerShell.git
 		Pop-Location
 	}
 
@@ -413,40 +353,6 @@ Begin
 		# history=100, rows=9999
 		Set-ItemProperty HKCU:\Console -Name 'HistoryBufferSize' -Value 0x64 -Force
 		Set-ItemProperty HKCU:\Console -Name 'ScreenBufferSize' -Value 0x2329008c -Force
-	}
-
-
-	function SetEdgePreferences
-	{
-		[System.ComponentModel.Description(
-			'Customize Edge preferences')]
-		[CmdletBinding(HelpURI='cmd')] param()
-
-		$0 = Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\User Data\Default\Preferences'
-		if (Test-path $0)
-		{
-			$preferences = Get-Content $0 | ConvertFrom-Json
-
-			<#
-			
-			DO THIS MANUALLY!
-
-			The ConverTo/From-Json commands don't preserve Json like
-			"foo": "@{key=value}"
-			
-			#>
-
-			# disable selected text mini menu; when this is enabled, you have to press
-			# Ctrl+C twice to copy text; this disables that so pressing Ctrl+C once works
-			if ($preferences.edge_quick_search -ne $null)
-			{
-				if ($preferences.edge_quick_search.show_mini_menu -eq 'true')
-				{
-					$preferences.edge_quick_search.show_mini_menu = 'false'
-					$preferences | ConvertTo-Json -Compress | Out-File $0
-				}
-			}
-		}
 	}
 
 
@@ -764,11 +670,11 @@ Begin
 	function SetTimeZone
 	{
 		[System.ComponentModel.Description(
-			'Set the Clock time zone to EST, good for new installs and VMs')]
+			'Set the Clock time zone to CST, good for new installs and VMs')]
 		[CmdletBinding(HelpURI='cmd')] param()
 
 		Write-Verbose 'setting time zone'
-		tzutil /s 'Eastern Standard Time'
+		tzutil /s 'Central Standard Time'
 	}
 }
 Process
@@ -818,13 +724,9 @@ Process
 	ScheduleTempCleanup
 
 	# requires powershell profile scripts
-	DisableZipFolders
 
-	GetYellowCursors
 	SetConsoleProperties
-	#SetEdgePreferences # DO THIS MANUALLY
 	CreateHeadlessPowerPlan
-	FixAirpodConnectivity
 
 	$line = New-Object String('*',80)
 	Write-Host

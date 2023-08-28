@@ -766,9 +766,9 @@ Process
 	{
 		CleanupContinuation
 
-		InstallBareTail
-		InstallGreenshot
-		InstallMacrium
+		#InstallBareTail
+		#InstallGreenshot
+		#InstallMacrium
 		InstallNotepadPP
 		InstallSysInternals
 		InstallPowerToys
@@ -795,11 +795,11 @@ Process
 		InstallNodeJs
 		InstallAngular
 		InstallAWSCli
-		InstallDockerDesktop
+		#InstallDockerDesktop
 		#InstallS3Browser
 
-		Chocolatize 'k9s'
-		Chocolatize 'linqpad'
+		#Chocolatize 'k9s'
+		#Chocolatize 'linqpad'
 		Chocolatize 'nuget.commandline'
 		#Chocolatize 'robo3t'
 	}
@@ -812,15 +812,16 @@ Process
 			InstallDateInTray
 		}
 
-		InstallGreenfish
-		InstallWilMa
-		InstallWmiExplorer
+		#InstallGreenfish
+		#InstallWilMa
+		#InstallWmiExplorer
 
-		Chocolatize 'audacity'  # audio editor
+		#Chocolatize 'audacity'  # audio editor
 		#Chocolatize 'dopamine'  # music player
-		Chocolatize 'licecap'
-		Chocolatize 'paint.net'
-		Chocolatize 'treesizefree'
+		#Chocolatize 'licecap'
+		#Chocolatize 'paint.net'
+		#Chocolatize 'treesizefree'
+		Chocolatize 'notion'
 		Chocolatize 'vlc'
 	}
 

@@ -21,7 +21,7 @@ If starting from scratch on a fresh machine:
 
 ```powershell
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12';
-$0 = 'https://raw.githubusercontent.com/stevencohn/WindowsPowerShell/main'
+$0 = 'https://raw.githubusercontent.com/wchesley/WindowsPowerShell/main'
 Invoke-WebRequest -Uri "$0/common.ps1" -OutFile C:\common.ps1;
 Invoke-WebRequest -Uri "$0/Initialize-Machine.ps1" -OutFile C:\Initialize-Machine.ps1
 ```
@@ -48,7 +48,7 @@ installed and would prefer to manually download the repo and run Initialize-Mach
 
 ```powershell
 Set-Location $home\Documents;
-git clone https://github.com/stevencohn/WindowsPowerShell.git
+git clone https://github.com/wchesley/WindowsPowerShell.git
 ```
 
 Or if you download the repo as a Zip file, you'll need to unblock all files after unzipping:
