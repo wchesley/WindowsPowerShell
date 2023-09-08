@@ -9,7 +9,7 @@ $repo = $PSCommandPath | Split-Path -parent | Split-Path -parent | Split-Path -p
 if (!(Test-Path "$repo\.git" -PathType Container))
 {
 	Write-Host '... Profile location is not a cloned git repo.' -ForegroundColor Yellow
-	Write-Host '... Clone from https://github.com/stevencohn/WindowsPowerShell.git' -ForegroundColor Yellow
+	Write-Host '... Clone from https://github.com/wchesley/WindowsPowerShell.git' -ForegroundColor Yellow
 	return
 }
 
