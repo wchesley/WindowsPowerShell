@@ -44,11 +44,11 @@ function DownloadBootstrap
     {
         curl -s -H "Authorization: token $($env:GITHUB_TOKEN)" `
             -H 'Accept: application/vnd.github.v3.raw' `
-            -o $zip -L "https://api.github.com/repos/stevencohn/bootstraps/contents/$source`?ref=main"
+            -o $zip -L "https://api.github.com/repos/wchesley/bootstraps/contents/$source`?ref=main"
     }
     else
     {
-        curl -s "https://raw.githubusercontent.com/stevencohn/bootstraps/main/$source" -o $zip
+        curl -s "https://raw.githubusercontent.com/wchesley/bootstraps/main/$source" -o $zip
     }
 
     Expand-Archive $zip -DestinationPath $target -Force | Out-Null
