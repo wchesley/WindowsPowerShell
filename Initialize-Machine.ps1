@@ -21,6 +21,8 @@ Begin
 {
 	. $PSScriptRoot\common.ps1
 
+	$script:tools = 'C:\tools'
+
 
 	function CreateHeadlessPowerPlan()
 	{
@@ -323,16 +325,70 @@ Begin
 			'Create a scheduled task to clean TEMP folders nightly')]
 		[CmdletBinding(HelpURI='cmd')] param()
 
-		# purge the current user's TEMP folder every morning at 5am
-		$trigger = New-ScheduledTaskTrigger -Daily -At 5am;
-		$action = New-ScheduledTaskAction -Execute "powershell.exe" `
-			-Argument '-Command "Start-Transcript %USERPROFILE%\purge.log; Clear-Temp"'
-
-		$task = Get-ScheduledTask -TaskName 'Purge TEMP' -ErrorAction:SilentlyContinue
+		$name = 'Purge TEMP'
+		$task = Get-ScheduledTask -TaskName $name -ErrorAction:SilentlyContinue
 		if ($task -eq $null)
 		{
-			Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Purge TEMP" -RunLevel Highest
+			# purge the current user's TEMP folder every morning at 5am
+			$trigger = New-ScheduledTaskTrigger -Daily -At 5am;
+			$action = New-ScheduledTaskAction -Execute "powershell.exe" `
+				-Argument '-Command "Start-Transcript %USERPROFILE%\purge.log; Clear-Temp"'
+
+			Register-ScheduledTask -Action $action -Trigger $trigger -TaskName $name -RunLevel Highest
 		}
+	}
+
+
+	function ScheduleRDPConnections
+	{
+		# When connecting via RDP to a host with a password protected screensaver, it may not be
+		# possible to unlock the host through the RDP connection after it locks. This disables the
+		# password protection when connecting through RDP and then restores it when disconnecting.
+
+		[System.ComponentModel.Description(
+			'Create scheduled tasks to toggle password-protected screensaver')]
+		[CmdletBinding(HelpURI='cmd')] param()
+
+		# events 24 and 1149 can be seen in Event Viewer in their respective Applications/$cat paths
+
+		# enable password screensaver on connection event ID 24 (Session has been disconnected)
+		$reg = 'reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /f /v ScreenSaverIsSecure /t REG_SZ /d 1'
+		$category = 'Microsoft-Windows-TerminalServices-LocalSessionManager'
+		CreateRDPTask 'RDP-lock' $reg $category 24
+
+		# disable password screensaver on connection event ID 1149 (User authentication succeeded)
+		$reg = 'reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /f /v ScreenSaverIsSecure /t REG_SZ /d 0'
+		$category = 'Microsoft-Windows-TerminalServices-RemoteConnectionManager'
+		CreateRDPTask 'RDP-unlock' $reg $category 1149
+	}
+
+
+	function CreateRDPTask
+	{
+		param($name, $reg, $category, $eventID)
+
+		# delete old task if it exists
+		Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false
+
+		$cmd = "$tools\RDP\$name.cmd"
+		if (!(Test-Path $cmd))
+		{
+			$dir = $cmd | Split-Path -Parent
+			if (!(Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+			$reg | Out-File $cmd -Force -Confirm:$false | Out-Null
+		}
+
+		$xml = "<QueryList><Query Id=""0"" Path=""$category/Operational""><Select Path=""$category/Operational"">*[System[Provider[@Name='$category'] and EventID=$eventID]]</Select></Query></QueryList>"
+
+		$triggers = @()
+		$cim = Get-CimClass -ClassName MSFT_TaskEventTrigger -Namespace Root/Microsoft/Windows/TaskScheduler:MSFT_TaskEventTrigger
+		$trigger = New-CimInstance -CimClass $cim -ClientOnly
+		$trigger.Subscription = $xml
+		$trigger.Enabled = $True 
+		$triggers += $trigger
+	
+		$action = New-ScheduledTaskAction -Execute $cmd
+		Register-ScheduledTask -TaskName $name -Trigger $triggers -Action $action -RunLevel Highest -Force
 	}
 
 
@@ -435,6 +491,17 @@ Begin
 			Rename-Item "HKLM:\SOFTWARE\WOW6432Node\$0\$k" -NewName ":$k"
 		}
 
+		# hide Gallery folder
+		$guid = '{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}'
+		$0 = "HKCU:\Software\Classes\CLSID\$guid"
+		if (Test-Path $0) {
+			Set-ItemProperty $0 -Name 'IsPinnedToNameSpaceTree' -Type DWord -Value 1
+		}
+		$0 = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace_41040327\$guid"
+		if (Test-Path $0) {
+			Remove-Item -Path $0 -Force -Recurse -ErrorAction SilentlyContinue
+		}
+
 		# restore traditional Win10 context menu (delete GUID key to revert to new style)
 		#reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve
 
@@ -462,6 +529,16 @@ Begin
 		# $0 = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
 		# Set-ItemProperty $0 -Name 'ShowSecondsInSystemClock' -Type DWord -Value 1
 
+		# enable developer End Task option on taskbar context menu
+		$0 = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings'
+		if (!(Test-Path $0)) { New-Item -Path $0 | Out-Null }
+		Set-ItemProperty $0 -Name 'TaskbarEndTask' -Type DWord -Value 1
+
+		# show seconds in time
+		$0 = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+		if (!(Test-Path $0)) { New-Item -Path $0 | Out-Null }
+		Set-ItemProperty $0 -Name 'ShowSecondsInSystemClock' -Type DWord -Value 1
+		
 		$0 = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer'
 		if (!(Test-Path $0)) { New-Item -Path $0 | Out-Null }
 		# unlock start menu customization. Some companies set this to prevent stupid users
@@ -722,6 +799,7 @@ Process
 	RemoveCrapware
 	SecurePagefile
 	ScheduleTempCleanup
+	ScheduleRDPConnections
 
 	# requires powershell profile scripts
 

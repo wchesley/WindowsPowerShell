@@ -20,12 +20,37 @@ function prompt {
 # Aliases
 
 New-Alias ep Edit-PSProfile
-New-Alias vs Invoke-VsDevCmd
+New-Alias vs Set-VsDevEnv
 New-Alias push Push-Location
 New-Alias pop Pop-Location
 
-function Push-PSRoot { Push-Location $PSScriptRoot }
-New-Alias pushp Push-PSRoot
+$0 = 'C:\Github\ClipboardViewer\bin\Debug\ClipboardViewer.exe'
+if (Test-Path $0)
+{
+	function Start-ClipboardViewer
+	{
+		[CmdletBinding()]
+		[Alias("cv")]
+		param ($p1, $p2, $p3, $p4)
+		& $0 $p1 $p2 $p3 $p4
+	}
+}
+
+function Push-PSRoot
+{
+	[CmdletBinding()]
+	[Alias("pushp")]
+	param()
+	Push-Location $PSScriptRoot
+}
+
+function Stop-Edge
+{
+	[CmdletBinding()]
+	[Alias('stopedge')]
+	param()
+	taskkill /f /im msedge.exe
+}
 
 . $PSScriptRoot\Modules\Scripts\Set-OutDefaultOverride.ps1
 Set-Alias ls Get-ChildItemColorized -Force -Option AllScope
@@ -33,8 +58,16 @@ Set-Alias ls Get-ChildItemColorized -Force -Option AllScope
 # curl.exe is installed as a choco package to \system32; ensure no alias
 Remove-Item alias:curl -ErrorAction SilentlyContinue
 
-function Start-Wilma { & 'C:\Program Files\Tools\WiLMa\WinLayoutManager.exe' }
-New-Alias wilma Start-Wilma 
+function Start-Wilma
+{
+	[CmdletBinding()]
+	[Alias("wilma")]
+	param()
+	& 'C:\Tools\WiLMa\WinLayoutManager.exe'
+}
+
+New-Alias hx Get-HistoryEx
+New-Alias Clear-History Clear-HistoryEx
 
 # Docker helpers
 New-Alias doc Remove-DockerTrash
@@ -45,7 +78,7 @@ New-Alias dow Start-DockerForWindows
 
 # run vsdevcmd.bat if $env:vsdev is set; this is done by conemu task definition
 if ($env:vsdev -eq '1') {
-	Invoke-VsDevCmd
+	Set-VsDevEnv
 }
 
 # Chocolatey profile (added by Chocolatey installer)
@@ -59,8 +92,8 @@ if (Test-Path($ChocolateyProfile)) {
 # interactive shell, otherwise it will interfere with command-lines like Flat.bat and modifying
 # the current working directory when we don't want it to!
 
-$cmd = (Get-WmiObject win32_process -filter ("ProcessID={0}" -f `
-	(Get-WmiObject win32_process -filter "ProcessID=$PID").ParentProcessID)).CommandLine
+$cmd = (Get-CimInstance win32_process -filter ("ProcessID={0}" -f `
+	(Get-CimInstance win32_process -filter "ProcessID=$PID").ParentProcessID)).CommandLine
 
 if ($cmd -notmatch 'cmd\.exe')
 {
@@ -74,6 +107,8 @@ if ($cmd -notmatch 'cmd\.exe')
 
 if (Test-Path $pwd\PowerShell_profile.ps1)
 {
-	# enable custom profile setup for primary development area, e.g. command aliasing
+	# invoke local folder-specific extensibility script
 	. $pwd\PowerShell_profile.ps1
 }
+
+oh-my-posh init pwsh --config "$env:POSH_THEMES_PATH\paradoxical.omp.json" | Invoke-Expression
